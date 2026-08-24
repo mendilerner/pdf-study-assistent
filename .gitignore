@@ -32,3 +32,6 @@ Desktop.ini
 *.pt
 *.bin
 *.safetensors
+
+# Separate learning projects
+elk-learning/

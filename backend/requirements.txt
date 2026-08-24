@@ -1,3 +1,0 @@
-# Part 0: Hebrew Extraction Spike
-marker-pdf
-PyMuPDF
