@@ -1,0 +1,103 @@
+import os
+import time
+
+from elasticsearch import Elasticsearch
+from elasticsearch.helpers import bulk
+
+INDEX_NAME = "study_chunks"
+
+INDEX_BODY = {
+    "settings": {
+        "analysis": {
+            "analyzer": {
+                "hebrew_analyzer": {
+                    "type": "custom",
+                    "tokenizer": "icu_tokenizer",
+                    "filter": [
+                        "icu_normalizer",
+                        "icu_folding",
+                        "hebrew_prefix_strip",
+                    ],
+                }
+            },
+            "filter": {
+                "hebrew_prefix_strip": {
+                    "type": "pattern_replace",
+                    "pattern": "^[והבכלמש]{1,2}(?=[א-ת]{3,})",
+                    "replacement": "",
+                }
+            },
+        }
+    },
+    "mappings": {
+        "properties": {
+            "text": {"type": "text", "analyzer": "hebrew_analyzer"},
+            "embedding": {
+                "type": "dense_vector",
+                "dims": 1024,
+                "similarity": "cosine",
+            },
+            "book_id": {"type": "keyword"},
+            "book_title": {"type": "keyword"},
+            "pdf_page": {"type": "integer"},
+            "pdf_page_end": {"type": "integer"},
+            "printed_page": {"type": "integer"},
+            "chunk_id": {"type": "keyword"},
+            "chunk_index": {"type": "integer"},
+        }
+    },
+}
+
+
+def get_client(host: str | None = None) -> Elasticsearch:
+    host = host or os.environ.get("ES_HOST", "http://localhost:9200")
+    return Elasticsearch(host)
+
+
+def wait_for_ready(client: Elasticsearch, timeout: int = 60) -> None:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            health = client.cluster.health(timeout="1s")
+            if health["status"] in ("green", "yellow"):
+                return
+        except Exception:
+            pass
+        time.sleep(2)
+    raise TimeoutError(f"Elasticsearch not ready after {timeout}s")
+
+
+def create_index(client: Elasticsearch, delete_existing: bool = False) -> None:
+    if delete_existing:
+        delete_index(client)
+    if not client.indices.exists(index=INDEX_NAME):
+        client.indices.create(index=INDEX_NAME, body=INDEX_BODY)
+
+
+def delete_index(client: Elasticsearch) -> None:
+    client.indices.delete(index=INDEX_NAME, ignore=[404])
+
+
+def index_document(
+    client: Elasticsearch, doc: dict, doc_id: str | None = None
+) -> None:
+    client.index(index=INDEX_NAME, id=doc_id, document=doc)
+
+
+def bulk_index(client: Elasticsearch, docs: list[dict]) -> int:
+    actions = [{"_index": INDEX_NAME, "_source": doc} for doc in docs]
+    success, _ = bulk(client, actions)
+    return success
+
+
+def search_text(client: Elasticsearch, query: str, size: int = 10) -> list[dict]:
+    resp = client.search(
+        index=INDEX_NAME,
+        query={"match": {"text": query}},
+        size=size,
+    )
+    return [hit["_source"] for hit in resp["hits"]["hits"]]
+
+
+def get_doc_count(client: Elasticsearch) -> int:
+    return client.count(index=INDEX_NAME)["count"]
