@@ -50,16 +50,21 @@ def _build_sentence_stream(pages: list[dict]) -> list[tuple[str, int]]:
 
 
 def _force_split_long_sentence(text: str) -> list[str]:
+    tokenizer = _get_tokenizer()
     words = text.split()
     pieces = []
     current = []
+    current_tokens = 0
+    limit = MAX_TOKENS - 10
     for word in words:
-        current.append(word)
-        if _token_len(" ".join(current)) >= MAX_TOKENS - 10:
-            current.pop()
-            if current:
-                pieces.append(" ".join(current))
+        word_tokens = len(tokenizer.encode(word, add_special_tokens=False))
+        if current and current_tokens + word_tokens >= limit:
+            pieces.append(" ".join(current))
             current = [word]
+            current_tokens = word_tokens
+        else:
+            current.append(word)
+            current_tokens += word_tokens
     if current:
         pieces.append(" ".join(current))
     return pieces
@@ -130,25 +135,16 @@ def chunk(
         })
         chunk_index += 1
 
-        # Compute overlap: walk backward to find ~OVERLAP_TOKENS
-        overlap_tokens = 0
-        overlap_start = len(current_sents)
-        for j in range(len(current_sents) - 1, -1, -1):
-            sent_tokens = _token_len(current_sents[j][0])
-            if overlap_tokens + sent_tokens > OVERLAP_TOKENS and overlap_start < len(current_sents):
-                break
-            overlap_tokens += sent_tokens
-            overlap_start = j
-
-        if overlap_start < len(current_sents) and i < len(stream):
-            # Rewind: re-insert overlap sentences back into stream
-            overlap_sents = current_sents[overlap_start:]
-            i = i - 0  # don't change i
-            # Instead, prepend overlap sentences to what's next
-            stream = (
-                stream[:i]
-                + list(overlap_sents)
-                + stream[i:]
-            )
+        if i < len(stream):
+            overlap_tokens = 0
+            rewind_count = 0
+            for j in range(len(current_sents) - 1, -1, -1):
+                sent_tokens = _token_len(current_sents[j][0])
+                if overlap_tokens + sent_tokens > OVERLAP_TOKENS:
+                    break
+                overlap_tokens += sent_tokens
+                rewind_count += 1
+            if rewind_count > 0:
+                i -= rewind_count
 
     return results

@@ -84,8 +84,13 @@ def index_document(
     client.index(index=INDEX_NAME, id=doc_id, document=doc)
 
 
-def bulk_index(client: Elasticsearch, docs: list[dict]) -> int:
-    actions = [{"_index": INDEX_NAME, "_source": doc} for doc in docs]
+def bulk_index(client: Elasticsearch, docs: list[dict], id_field: str = "chunk_id") -> int:
+    actions = []
+    for doc in docs:
+        action = {"_index": INDEX_NAME, "_source": doc}
+        if id_field and id_field in doc:
+            action["_id"] = doc[id_field]
+        actions.append(action)
     success, _ = bulk(client, actions)
     return success
 
