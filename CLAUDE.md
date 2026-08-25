@@ -33,6 +33,14 @@ Part 2: Chunking — **COMPLETE**.
 - Sentence splitting with Hebrew/English citation handling
 - Verify: `PYTHONIOENCODING=utf-8 uv run python backend/eval/test_part2.py`
 
+Part 3: Embedding Generation — **COMPLETE**.
+- multilingual-e5-large via sentence-transformers, CPU only
+- Lazy singleton model loading (first call ~10-20s, then instant)
+- `embed_passages()` prepends `"passage: "`, `embed_query()` prepends `"query: "`
+- All vectors L2-normalized, 1024 dims
+- Shared MODEL_NAME constant between chunker and embeddings
+- Verify: `uv run python backend/eval/test_part3.py`
+
 ## Key Technical Decisions
 
 - **PDF parser**: PyMuPDF (`import pymupdf`), NOT `get_text(sort=True)` (reverses RTL word order).
