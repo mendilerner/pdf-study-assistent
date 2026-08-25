@@ -1,7 +1,8 @@
 import re
 import sys
 
-MODEL_NAME = "intfloat/multilingual-e5-large"
+from app.services.constants import MODEL_NAME
+
 TARGET_TOKENS = 300
 OVERLAP_TOKENS = 50
 MAX_TOKENS = 512
