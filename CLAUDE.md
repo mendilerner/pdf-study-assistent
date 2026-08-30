@@ -21,7 +21,7 @@ Part 0: Hebrew Extraction Spike — **COMPLETE (GO)**.
 Part 1: Elasticsearch Setup — **COMPLETE**.
 - Custom Docker image with analysis-icu plugin
 - Hebrew analyzer: icu_tokenizer + icu_normalizer + icu_folding + hebrew_prefix_strip
-- Index `study_chunks` includes dense_vector field (1024 dims) for future use
+- Index `study_chunks` includes dense_vector field (768 dims, matches e5-base)
 - Kibana available at http://localhost:5601
 - Start ES + Kibana: `docker compose up -d`
 - Verify: `uv run python backend/eval/test_part1.py`

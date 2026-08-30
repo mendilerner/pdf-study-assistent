@@ -91,6 +91,9 @@ def ingest(
         logger.info("       embedded %d/%d", done, len(texts))
 
     # Attach vectors to chunks
+    assert len(all_vectors) == len(chunks), (
+        f"embedding count mismatch: {len(all_vectors)} vectors for {len(chunks)} chunks"
+    )
     for c, vec in zip(chunks, all_vectors):
         c["embedding"] = vec
 
