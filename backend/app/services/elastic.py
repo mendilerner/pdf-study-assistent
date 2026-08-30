@@ -147,6 +147,8 @@ def get_books(client: Elasticsearch) -> list[dict]:
 
 
 def delete_book_chunks(client: Elasticsearch, book_id: str) -> int:
+    if not client.indices.exists(index=INDEX_NAME):
+        return 0
     resp = client.delete_by_query(
         index=INDEX_NAME,
         query={"term": {"book_id": book_id}},
