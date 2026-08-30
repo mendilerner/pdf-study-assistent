@@ -13,6 +13,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from app.services.constants import EMBEDDING_DIMS
 from app.services.embeddings import embed_query, embed_passages
 
 
@@ -36,18 +37,18 @@ def main():
     p_vecs = embed_passages([relevant, unrelated])
 
     # Test 1: Vector dimensions
-    print("--- Test 1: Vector dimensions (1024) ---")
-    if len(q_vec) == 1024:
+    print(f"--- Test 1: Vector dimensions ({EMBEDDING_DIMS}) ---")
+    if len(q_vec) == EMBEDDING_DIMS:
         print(f"  query vector: {len(q_vec)} dims — PASS")
     else:
-        print(f"  FAIL: query vector has {len(q_vec)} dims, expected 1024")
+        print(f"  FAIL: query vector has {len(q_vec)} dims, expected {EMBEDDING_DIMS}")
         passed = False
 
     for i, v in enumerate(p_vecs):
-        if len(v) == 1024:
+        if len(v) == EMBEDDING_DIMS:
             print(f"  passage {i} vector: {len(v)} dims — PASS")
         else:
-            print(f"  FAIL: passage {i} vector has {len(v)} dims, expected 1024")
+            print(f"  FAIL: passage {i} vector has {len(v)} dims, expected {EMBEDDING_DIMS}")
             passed = False
 
     # Test 2: Normalization (L2 norm ≈ 1.0)
