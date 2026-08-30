@@ -4,7 +4,10 @@ import time
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
 
+from app.services.constants import EMBEDDING_DIMS
+
 INDEX_NAME = "study_chunks"
+BOOKS_INDEX_NAME = "study_books"
 
 INDEX_BODY = {
     "settings": {
@@ -34,7 +37,7 @@ INDEX_BODY = {
             "text": {"type": "text", "analyzer": "hebrew_analyzer"},
             "embedding": {
                 "type": "dense_vector",
-                "dims": 1024,
+                "dims": EMBEDDING_DIMS,
                 "similarity": "cosine",
             },
             "book_id": {"type": "keyword"},
@@ -106,3 +109,49 @@ def search_text(client: Elasticsearch, query: str, size: int = 10) -> list[dict]
 
 def get_doc_count(client: Elasticsearch) -> int:
     return client.count(index=INDEX_NAME)["count"]
+
+
+# --- Books index ---
+
+BOOKS_INDEX_BODY = {
+    "mappings": {
+        "properties": {
+            "book_id": {"type": "keyword"},
+            "title": {"type": "keyword"},
+            "pdf_filename": {"type": "keyword"},
+            "page_offset": {"type": "integer"},
+            "page_count": {"type": "integer"},
+            "chunk_count": {"type": "integer"},
+            "indexed_at": {"type": "date"},
+        }
+    },
+}
+
+
+def create_books_index(client: Elasticsearch) -> None:
+    if not client.indices.exists(index=BOOKS_INDEX_NAME):
+        client.indices.create(index=BOOKS_INDEX_NAME, body=BOOKS_INDEX_BODY)
+
+
+def register_book(client: Elasticsearch, book_meta: dict) -> None:
+    client.index(
+        index=BOOKS_INDEX_NAME,
+        id=book_meta["book_id"],
+        document=book_meta,
+    )
+
+
+def get_books(client: Elasticsearch) -> list[dict]:
+    resp = client.search(index=BOOKS_INDEX_NAME, query={"match_all": {}}, size=100)
+    return [hit["_source"] for hit in resp["hits"]["hits"]]
+
+
+def delete_book_chunks(client: Elasticsearch, book_id: str) -> int:
+    if not client.indices.exists(index=INDEX_NAME):
+        return 0
+    resp = client.delete_by_query(
+        index=INDEX_NAME,
+        query={"term": {"book_id": book_id}},
+        refresh=True,
+    )
+    return resp.get("deleted", 0)

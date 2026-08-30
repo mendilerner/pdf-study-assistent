@@ -42,8 +42,8 @@ def embed_passages(texts: list[str], batch_size: int = 32) -> list[list[float]]:
 def embed_query(text: str) -> list[float]:
     """Embed a search question. Uses "query: " prefix (not "passage: ").
 
-    Returns a single 1024-dim vector. At search time this vector is
-    compared against all passage vectors in ES via cosine similarity (kNN).
+    Returns a single 768-dim vector (e5-base). At search time this vector
+    is compared against all passage vectors in ES via cosine similarity (kNN).
     """
     vector = _get_model().encode(f"query: {text}", normalize_embeddings=True)
     return vector.tolist()
