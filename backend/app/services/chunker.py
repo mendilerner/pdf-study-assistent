@@ -1,7 +1,10 @@
 import re
-import sys
+from functools import lru_cache
 
 from app.services.constants import MODEL_NAME
+from app.services.logger import get_logger
+
+logger = get_logger(__name__)
 
 TARGET_TOKENS = 300
 OVERLAP_TOKENS = 50
@@ -20,6 +23,7 @@ def _get_tokenizer():
     return _tokenizer
 
 
+@lru_cache(maxsize=None)
 def _token_len(text: str) -> int:
     return len(_get_tokenizer().encode(text, add_special_tokens=True))
 
@@ -85,10 +89,9 @@ def chunk(
     expanded = []
     for sentence, pdf_page in stream:
         if _token_len(sentence) > MAX_TOKENS:
-            print(
-                f"WARNING: sentence on page {pdf_page} exceeds {MAX_TOKENS} tokens, "
-                f"splitting at word boundary",
-                file=sys.stderr,
+            logger.warning(
+                "sentence on page %d exceeds %d tokens, splitting at word boundary",
+                pdf_page, MAX_TOKENS,
             )
             for piece in _force_split_long_sentence(sentence):
                 expanded.append((piece, pdf_page))
@@ -139,7 +142,10 @@ def chunk(
         if i < len(stream):
             overlap_tokens = 0
             rewind_count = 0
+            max_rewind = len(current_sents) - 1
             for j in range(len(current_sents) - 1, -1, -1):
+                if rewind_count >= max_rewind:
+                    break
                 sent_tokens = _token_len(current_sents[j][0])
                 if overlap_tokens + sent_tokens > OVERLAP_TOKENS:
                     break
@@ -148,4 +154,5 @@ def chunk(
             if rewind_count > 0:
                 i -= rewind_count
 
+    _token_len.cache_clear()
     return results
