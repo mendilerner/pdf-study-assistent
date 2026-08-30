@@ -34,12 +34,20 @@ Part 2: Chunking — **COMPLETE**.
 - Verify: `PYTHONIOENCODING=utf-8 uv run python backend/eval/test_part2.py`
 
 Part 3: Embedding Generation — **COMPLETE**.
-- multilingual-e5-large via sentence-transformers, CPU only
+- multilingual-e5-base via sentence-transformers, CPU only (switched from e5-large for 2x speed)
 - Lazy singleton model loading (first call ~10-20s, then instant)
 - `embed_passages()` prepends `"passage: "`, `embed_query()` prepends `"query: "`
-- All vectors L2-normalized, 1024 dims
-- Shared MODEL_NAME constant between chunker and embeddings
+- All vectors L2-normalized, 768 dims
+- Shared MODEL_NAME and EMBEDDING_DIMS constants between modules
 - Verify: `uv run python backend/eval/test_part3.py`
+
+Part 4: Indexing Pipeline — **COMPLETE**.
+- `ingest(pdf_path, title)` orchestrates: parse → chunk → embed → bulk index
+- Book registry in ES (`study_books` index): book_id, title, page_offset, page_count, chunk_count
+- Original PDF copied to `data/books/{book_id}.pdf`
+- Auto UUID for book_id, safe re-indexing (deletes old chunks first)
+- Embedding batched with progress output (slow on CPU, ~5-10 min for full book)
+- Verify: `docker compose up -d && uv run python backend/eval/test_part4.py`
 
 ## Key Technical Decisions
 
